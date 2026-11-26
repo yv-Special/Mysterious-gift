@@ -1,0 +1,182 @@
+{
+  "base": "./cover-base.webp",
+  "cover": "./cover.webp",
+  "size": [
+    940,
+    1316
+  ],
+  "winterEffects": true,
+  "items": [
+    {
+      "id": "lights",
+      "src": "./el-lights.webp",
+      "box": [
+        220,
+        246,
+        500
+      ],
+      "lift": 0.008,
+      "bob": 0.0012
+    },
+    {
+      "id": "valance",
+      "src": "./el-valance.webp",
+      "box": [
+        130,
+        160,
+        690
+      ],
+      "lift": 0.01
+    },
+    {
+      "id": "garland-l",
+      "src": "./el-garland-l.webp",
+      "box": [
+        217,
+        192,
+        100
+      ],
+      "lift": 0.012
+    },
+    {
+      "id": "garland-c",
+      "src": "./el-garland-l.webp",
+      "box": [
+        399,
+        183,
+        133
+      ],
+      "lift": 0.013
+    },
+    {
+      "id": "garland-r",
+      "src": "./el-garland-l.webp",
+      "box": [
+        626,
+        187,
+        100
+      ],
+      "lift": 0.014
+    },
+    {
+      "id": "snowflake-l",
+      "src": "./el-snowflake-l.webp",
+      "box": [
+        145,
+        332,
+        58
+      ],
+      "lift": 0.016,
+      "bob": 0.0016
+    },
+    {
+      "id": "snowflake-r",
+      "src": "./el-snowflake-l.webp",
+      "box": [
+        735,
+        330,
+        58
+      ],
+      "lift": 0.016,
+      "bob": 0.0014
+    },
+    {
+      "id": "giftbox-l",
+      "src": "./el-giftbox-l.webp",
+      "box": [
+        608,
+        932,
+        155
+      ],
+      "lift": 0.02
+    },
+    {
+      "id": "tower",
+      "src": "./el-tower.webp",
+      "box": [
+        140,
+        773,
+        190
+      ],
+      "lift": 0.022
+    },
+    {
+      "id": "giftbox-s",
+      "src": "./el-giftbox-s.webp",
+      "box": [
+        618,
+        949,
+        168
+      ],
+      "lift": 0.024
+    },
+    {
+      "id": "snowman",
+      "src": "./el-snowman.webp",
+      "box": [
+        285,
+        930,
+        95
+      ],
+      "lift": 0.026
+    },
+    {
+      "id": "cake",
+      "src": "./el-cake.webp",
+      "box": [
+        335,
+        855,
+        185
+      ],
+      "lift": 0.028
+    },
+    {
+      "id": "cocoa",
+      "src": "./el-cocoa.webp",
+      "box": [
+        452,
+        959,
+        100
+      ],
+      "lift": 0.03
+    },
+    {
+      "id": "giftbag",
+      "src": "./el-giftbag.webp",
+      "box": [
+        525,
+        940,
+        105
+      ],
+      "lift": 0.032
+    }
+  ],
+  "motifs": [
+    {
+      "src": "./el-motif-1.webp",
+      "px": 420
+    }
+  ],
+  "glow": {
+    "at": [
+      424,
+      616
+    ],
+    "color": "#ffcf7a",
+    "size": 0.5,
+    "intensity": 0.8,
+    "flicker": true
+  },
+  "particles": {
+    "kind": "snow",
+    "area": [
+      200,
+      180,
+      540,
+      620
+    ],
+    "count": 26,
+    "size": 0.14
+  },
+  "backLine": "甘轩瑜"
+}

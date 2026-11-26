@@ -1,0 +1,231 @@
+:root {
+  color-scheme: light;
+  --bg-canvas: #fbfaf9;
+  --text-primary: #1a1816;
+  --text-muted: #7a736b;
+  --dock-bg: rgba(255, 255, 255, 0.9);
+  --dock-border: rgba(231, 229, 228, 0.85);
+  --stone-100: #f5f5f4;
+  --stone-700: #44403c;
+  --ink: #2b2623;
+  --ui: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Segoe UI', Roboto, sans-serif;
+  --hand: 'Bradley Hand', Noteworthy, 'Hannotate SC', 'HanziPen SC', 'Kaiti SC', 'Caveat', 'Segoe Print', 'Comic Sans MS', cursive;
+}
+* { box-sizing: border-box; }
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--ui);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+main {
+  position: relative;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--bg-canvas);
+  user-select: none;
+}
+header {
+  position: absolute;
+  left: 1.25rem;
+  top: 1rem;
+  z-index: 10;
+  pointer-events: none;
+}
+h1 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
+.stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  isolation: isolate;
+  touch-action: pan-y;
+  user-select: none;
+  /* Initial paper position for flat mode; the renderer projects the 3D page here. */
+  --page-w: min(83%, 21rem);
+  --page-h: min(74%, 30rem);
+  --page-x: calc((100% - var(--page-w)) / 2);
+  --page-y: calc((100% - var(--page-h)) / 2 - 1.5rem);
+}
+.stage canvas, .proof { position: absolute; }
+.stage canvas { width: 100%; height: 100%; inset: 0; visibility: hidden; cursor: grab; }
+.stage canvas:active { cursor: grabbing; }
+.proof {
+  inset: 0;
+  margin: auto;
+  width: auto;
+  height: auto;
+  max-width: 82%;
+  max-height: 74%;
+  box-shadow: 0 10px 30px rgba(26, 24, 22, 0.14);
+  cursor: pointer;
+}
+main[data-renderer='webgl'] canvas { visibility: visible; }
+main[data-renderer='webgl'] .proof, main[data-open='true'] .proof { visibility: hidden; }
+#letter {
+  position: absolute;
+  left: var(--page-x);
+  top: var(--page-y);
+  width: var(--page-w);
+  height: var(--page-h);
+  container-type: inline-size;
+  pointer-events: none;
+}
+#letter[hidden] { display: none; }
+.writing {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+  user-select: text;
+  color: var(--ink);
+  font-family: var(--hand);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+/* Website three-slot proportions (SLOTS in src/lib/card/slots.ts):
+ * greeting y 7%..17%, body y 24%..78%, signature y 83%..93%. */
+#greeting {
+  position: absolute;
+  left: 10%; right: 10%; top: 7%; height: 10%;
+  margin: 0;
+  display: flex; align-items: center;
+  font-size: clamp(.95rem, 8.2cqw, 1.85rem);
+}
+#message {
+  position: absolute;
+  left: 10%; right: 10%; top: 24%; max-height: 54%;
+  margin: 0;
+  overflow: auto;
+  font-size: clamp(.85rem, 7.2cqw, 1.55rem);
+}
+#signature {
+  position: absolute;
+  left: 30%; right: 10%; top: 83%; height: 10%;
+  margin: 0;
+  display: flex; align-items: center; justify-content: flex-end;
+  text-align: right;
+  font-size: clamp(.9rem, 7.5cqw, 1.65rem);
+}
+/* In WebGL mode the ink is painted directly onto the 3D insert sheet mesh so it
+ * bends, lights, and orbits with the paper; keep the DOM layer transparent &
+ * keyboard-accessible over the exact right page rect without ghost highlights. */
+main[data-renderer='webgl'] .writing {
+  color: transparent;
+  user-select: none;
+  pointer-events: auto;
+}
+main:not([data-renderer='webgl']) #letter {
+  background: #fbf8f2;
+  border: 1px solid var(--dock-border);
+  box-shadow: 0 10px 30px rgba(26, 24, 22, 0.12);
+}
+
+/* Floating glass dock matching Gallery.tsx (bg-white/90, border-stone-200/80, text-stone-700). */
+.dock {
+  position: absolute;
+  left: 50%;
+  bottom: max(1.25rem, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem;
+  border-radius: 1rem;
+  border: 1px solid var(--dock-border);
+  background: var(--dock-bg);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+#toggle,
+#music-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: var(--stone-700);
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+#toggle:hover:not(:disabled),
+#music-toggle:hover { background: var(--stone-100); color: var(--text-primary); }
+#toggle:disabled { opacity: 0.45; cursor: wait; }
+#toggle .icon-open { display: none; }
+main[data-open='true'] #toggle .icon-closed { display: none; }
+main[data-open='true'] #toggle .icon-open { display: block; }
+#music-toggle[hidden] { display: none; }
+#music-toggle .icon-muted { display: none; }
+#music-toggle[aria-pressed='true'] .icon-sound { display: none; }
+#music-toggle[aria-pressed='true'] .icon-muted { display: block; }
+
+:focus-visible { outline: 2px solid #78716c; outline-offset: 2px; }
+
+/* Status banner: hidden once WebGL is ready; visible only for file://, flat fallback, or load error. */
+.notice {
+  position: absolute;
+  left: 50%;
+  bottom: calc(max(1.25rem, env(safe-area-inset-bottom)) + 3.8rem);
+  transform: translateX(-50%);
+  z-index: 20;
+  margin: 0;
+  max-width: calc(100vw - 2rem);
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--dock-border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+  text-align: center;
+}
+.notice:empty,
+main[data-renderer='webgl'] .notice {
+  display: none;
+}
+
+/* Quiet maker credit; remove with "credit": false in card.json. */
+.credit {
+  position: absolute;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1.25rem, env(safe-area-inset-bottom));
+  z-index: 10;
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  text-decoration: none;
+  opacity: 0.55;
+  transition: opacity 150ms ease;
+}
+.credit:hover,
+.credit:focus-visible { opacity: 1; text-decoration: underline; }
+@media (max-width: 480px) {
+  /* Narrow screens: tuck the credit under the centered dock instead of beside it. */
+  .credit {
+    right: 50%;
+    transform: translateX(50%);
+    bottom: calc(max(1.25rem, env(safe-area-inset-bottom)) - 1.05rem);
+    font-size: 0.62rem;
+    white-space: nowrap;
+  }
+}

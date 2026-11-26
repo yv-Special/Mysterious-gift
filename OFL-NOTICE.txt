@@ -1,0 +1,9 @@
+This directory contains self-hosted webfont subsets for offline card rendering:
+
+- Long Cang (Chinese handwriting) — SIL Open Font License 1.1
+  https://fonts.google.com/specimen/Long+Cang
+- Caveat (Latin handwriting) — SIL Open Font License 1.1
+  https://fonts.google.com/specimen/Caveat
+
+Licensed under the SIL Open Font License, Version 1.1 (OFL-1.1).
+https://openfontlicense.org/

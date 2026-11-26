@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "card": "生日贺卡-小俞宝宝",
+  "entries": [
+    {
+      "key": "base|生日贺卡-小俞宝宝|0.9|0.45",
+      "name": "base",
+      "normal": "base-normal.webp",
+      "surface": "base-surface.webp"
+    },
+    {
+      "key": "layer|./el-lights.webp|360",
+      "name": "layer-lights",
+      "normal": "layer-lights-normal.webp",
+      "surface": "layer-lights-surface.webp"
+    },
+    {
+      "key": "layer|./el-valance.webp|360",
+      "name": "layer-valance",
+      "normal": "layer-valance-normal.webp",
+      "surface": "layer-valance-surface.webp"
+    },
+    {
+      "key": "layer|./el-garland-l.webp|360",
+      "name": "layer-garland-l",
+      "normal": "layer-garland-l-normal.webp",
+      "surface": "layer-garland-l-surface.webp"
+    },
+    {
+      "key": "layer|./el-garland-l.webp|360",
+      "name": "layer-garland-c",
+      "normal": "layer-garland-c-normal.webp",
+      "surface": "layer-garland-c-surface.webp"
+    },
+    {
+      "key": "layer|./el-garland-l.webp|360",
+      "name": "layer-garland-r",
+      "normal": "layer-garland-r-normal.webp",
+      "surface": "layer-garland-r-surface.webp"
+    },
+    {
+      "key": "layer|./el-snowflake-l.webp|360",
+      "name": "layer-snowflake-l",
+      "normal": "layer-snowflake-l-normal.webp",
+      "surface": "layer-snowflake-l-surface.webp"
+    },
+    {
+      "key": "layer|./el-snowflake-l.webp|360",
+      "name": "layer-snowflake-r",
+      "normal": "layer-snowflake-r-normal.webp",
+      "surface": "layer-snowflake-r-surface.webp"
+    },
+    {
+      "key": "layer|./el-giftbox-l.webp|360",
+      "name": "layer-giftbox-l",
+      "normal": "layer-giftbox-l-normal.webp",
+      "surface": "layer-giftbox-l-surface.webp"
+    },
+    {
+      "key": "layer|./el-tower.webp|360",
+      "name": "layer-tower",
+      "normal": "layer-tower-normal.webp",
+      "surface": "layer-tower-surface.webp"
+    },
+    {
+      "key": "layer|./el-giftbox-s.webp|360",
+      "name": "layer-giftbox-s",
+      "normal": "layer-giftbox-s-normal.webp",
+      "surface": "layer-giftbox-s-surface.webp"
+    },
+    {
+      "key": "layer|./el-snowman.webp|360",
+      "name": "layer-snowman",
+      "normal": "layer-snowman-normal.webp",
+      "surface": "layer-snowman-surface.webp"
+    },
+    {
+      "key": "layer|./el-cake.webp|360",
+      "name": "layer-cake",
+      "normal": "layer-cake-normal.webp",
+      "surface": "layer-cake-surface.webp"
+    },
+    {
+      "key": "layer|./el-cocoa.webp|360",
+      "name": "layer-cocoa",
+      "normal": "layer-cocoa-normal.webp",
+      "surface": "layer-cocoa-surface.webp"
+    },
+    {
+      "key": "layer|./el-giftbag.webp|360",
+      "name": "layer-giftbag",
+      "normal": "layer-giftbag-normal.webp",
+      "surface": "layer-giftbag-surface.webp"
+    }
+  ]
+}
