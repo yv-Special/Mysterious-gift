@@ -1,3 +1,3 @@
 (function () {
-  try { if (localStorage.getItem("paperSeal.v1") === "2a2cae4ef4f309e8d6524087237ca2e12d4ef08b607e65f65196abc92b034533") { location.replace("./card.html"); } } catch (e) {}
+  try { if (localStorage.getItem("paperSeal.v1") === "b1b975810afc02d68069da197d85956507b368b383e10ced8cc352cdeeb51073") { location.replace("./card.html"); } } catch (e) {}
 })();

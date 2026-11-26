@@ -1,5 +1,5 @@
 (function () {
-  var K = "paperSeal.v1", E = "2a2cae4ef4f309e8d6524087237ca2e12d4ef08b607e65f65196abc92b034533", ok = false;
+  var K = "paperSeal.v1", E = "b1b975810afc02d68069da197d85956507b368b383e10ced8cc352cdeeb51073", ok = false;
   try { ok = localStorage.getItem(K) === E; } catch (e) {}
   if (!ok) { try { ok = sessionStorage.getItem(K) === E; } catch (e) {} }
   if (!ok) { ok = location.hash.indexOf(E) >= 0; }

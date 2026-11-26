@@ -1,7 +1,7 @@
 /* 封蜡校验（前端） */
 (function () {
   var K = "paperSeal.v1";
-  var E = "2a2cae4ef4f309e8d6524087237ca2e12d4ef08b607e65f65196abc92b034533";
+  var E = "b1b975810afc02d68069da197d85956507b368b383e10ced8cc352cdeeb51073";
   var FAIL = "paperSeal.fail";
   var S = "paper-letter::yv-2026-winter";
   var LOCKT = "paperSeal.till";
