@@ -43,6 +43,7 @@ function flip() {
   // First tap breaks the wax and pulls the card out of its envelope.
   if (scene?.isWrapped?.()) {
     scene.unwrap();
+    music.start(); // 拆火漆的这一刻就开始放歌，移动端只认这一次手势
     syncToggleButton();
     return;
   }
@@ -218,6 +219,9 @@ async function boot() {
     scene = await createScene($('canvas'), card);
     scene.setOpen(open);
     main.dataset.renderer = 'webgl';
+    // Warm the song while the reader is still looking at the sealed envelope.
+    const bgm = $('#bgm');
+    if (bgm && card.music) { bgm.preload = 'auto'; bgm.load(); }
     ready = true;
     button.disabled = false;
     syncToggleButton();

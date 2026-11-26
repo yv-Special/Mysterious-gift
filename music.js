@@ -7,7 +7,7 @@
  * allow sound after a user gesture, so playback starts on the first open.
  */
 
-const LOCAL_MUSIC = /^(?:\.\/)?music\/[^/\\]+\.(?:mp3|m4a|ogg|wav)$/i;
+const LOCAL_MUSIC = /^(?:\.\/)?(?:music\/)?[^/\\]+\.(?:mp3|m4a|ogg|wav)$/i;
 const TARGET_VOLUME = 0.6;
 const FADE_MS = 1200;
 
@@ -41,7 +41,7 @@ export function createMusic(src, audio, button) {
   const noop = { start() {} };
   if (src === undefined) return noop;
   if (!isLocalMusic(src)) {
-    console.warn('card.json music ignored: use a file in ./music/ (mp3, m4a, ogg, wav)');
+    console.warn('card.json music ignored: use a local file such as ./bgm.mp3 (mp3, m4a, ogg, wav)');
     return noop;
   }
 

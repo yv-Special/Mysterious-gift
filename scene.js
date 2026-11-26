@@ -426,11 +426,18 @@ export async function createScene(canvas, card) {
     depthTest: true,
     depthWrite: true,
   });
+  // 立盖挂在"信封上沿"的枢轴上：抽卡时整片向后翻倒（像真信封把盖子折到背后），
+  // 这样卡片升起时不会和立盖轮廓叠在一起，看上去就不穿模了。
+  const envLidPivot = new THREE.Group();
+  envLidPivot.position.set(0, ENV_H / 2, -0.22);
+  envLidPivot.rotation.x = 0;
+  envelopeGroup.add(envLidPivot);
+
   const envLid = new THREE.Mesh(new THREE.PlaneGeometry(ENV_W, LID_H), envLidMat);
-  envLid.position.set(0, ENV_H / 2 + LID_H / 2, -0.22);
+  envLid.position.set(0, LID_H / 2, 0);
   envLid.renderOrder = -2;          // behind the card, which renders at 0
   envLid.visible = false;
-  envelopeGroup.add(envLid);
+  envLidPivot.add(envLid);
 
   // Cream backing so the envelope still reads as paper when it tilts.
   const envBackMat = new THREE.MeshStandardMaterial({
@@ -1067,8 +1074,8 @@ export async function createScene(canvas, card) {
       center.position.y = CARD_STOW_Y * (1 - cardRise);
       center.scale.setScalar(CARD_STOW + (1 - CARD_STOW) * cardRise);
       envelopeGroup.position.y = -6.2 * envDrop;
-      const fade = 1 - THREE.MathUtils.smoothstep(k, 0.34, 0.70);
-      const backFade = 1 - THREE.MathUtils.smoothstep(k, 0.08, 0.42);
+      const fade = 1 - THREE.MathUtils.smoothstep(k, 0.60, 0.92);
+      const backFade = 1 - THREE.MathUtils.smoothstep(k, 0.52, 0.84);
       // The lid sits behind the card once it is pulled out, so it leaves first.
       const flapFade = 1 - THREE.MathUtils.smoothstep(k, 0.12, 0.34);
       envMat.opacity = fade * (1 - THREE.MathUtils.smoothstep(ft, 0.38, 0.80));
@@ -1079,9 +1086,10 @@ export async function createScene(canvas, card) {
       envOpenMat.opacity = fade * openEase;
       envOpenMesh.visible = envOpenMat.opacity > 0.004;
       envOpenMesh.position.y = -0.16 * (1 - ft);
-      envLidMat.opacity = envOpenMat.opacity;
-      envLid.visible = envOpenMat.opacity > 0.004;
-      envLid.position.y = ENV_H / 2 + LID_H / 2 - 0.16 * (1 - ft);
+      const lidFall = THREE.MathUtils.smoothstep(k, 0.0, 0.34);   // 抽卡开始 → 立盖向后翻倒
+      envLidPivot.rotation.x = -1.55 * lidFall;
+      envLidMat.opacity = openEase * (1 - THREE.MathUtils.smoothstep(k, 0.30, 0.52));
+      envLid.visible = envLidMat.opacity > 0.004;
       sealMat.opacity = (1 - Math.pow(st, 1.5)) * fade;
       envelopeGroup.visible = fade > 0.004;
 

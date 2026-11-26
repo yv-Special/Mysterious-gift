@@ -276,37 +276,53 @@ main[data-renderer='webgl'] .notice {
   }
 }
 
-/* Loading veil: the cover proof stays visible underneath while the paper scene
- * is assembled. Slow mobile networks see elapsed seconds instead of a blank wait. */
+/* Loading veil: the cover is not ready yet, so the wait is carried by the card's
+ * own snowflake motif on a sheet of the same cream paper. It lifts away once the
+ * paper scene has been assembled. */
 #loader {
   position: absolute;
-  left: 50%;
-  bottom: calc(max(1.25rem, env(safe-area-inset-bottom)) + 3.9rem);
-  transform: translateX(-50%);
+  top: 4.1rem;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 30;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.45rem 0.9rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid var(--dock-border);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.07);
-  font-size: 0.78rem;
+  justify-content: center;
+  gap: 1.1rem;
+  background:
+    radial-gradient(62% 46% at 50% 43%, #f2f5fb 0%, rgba(251, 250, 249, 0) 72%),
+    var(--bg-canvas, #fbfaf9);
   color: var(--text-muted);
-  white-space: nowrap;
+  text-align: center;
 }
-.loader-ring {
-  width: 0.8rem;
-  height: 0.8rem;
-  border-radius: 999px;
-  border: 2px solid rgba(120, 113, 108, 0.25);
-  border-top-color: rgba(120, 113, 108, 0.75);
-  animation: spin 900ms linear infinite;
+.loader-flake {
+  width: clamp(10rem, 48vw, 17rem);
+  height: auto;
+  filter: contrast(1.1) saturate(1.06) drop-shadow(0 12px 24px rgba(76, 106, 160, 0.2));
+  animation: flake-drift 11s ease-in-out infinite;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+#loader-text {
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+}
+@keyframes flake-drift {
+  0%   { transform: rotate(0deg)   scale(1);    opacity: 0.94; }
+  50%  { transform: rotate(180deg) scale(1.04); opacity: 1; }
+  100% { transform: rotate(360deg) scale(1);    opacity: 0.94; }
+}
 main[data-renderer='webgl'] #loader,
-main[data-renderer='flat'] #loader { display: none; }
+main[data-renderer='flat'] #loader {
+  animation: loader-out 520ms ease forwards;
+  pointer-events: none;
+}
+@keyframes loader-out {
+  to { opacity: 0; visibility: hidden; }
+}
 @media (prefers-reduced-motion: reduce) {
-  .loader-ring { animation: none; }
+  .loader-flake { animation: none; }
 }
