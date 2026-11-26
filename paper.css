@@ -9,7 +9,7 @@
   --stone-700: #44403c;
   --ink: #2b2623;
   --ui: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Segoe UI', Roboto, sans-serif;
-  --hand: 'Bradley Hand', Noteworthy, 'Hannotate SC', 'HanziPen SC', 'Kaiti SC', 'Caveat', 'Segoe Print', 'Comic Sans MS', cursive;
+  --hand: 'Long Cang', 'Bradley Hand', Noteworthy, 'Hannotate SC', 'HanziPen SC', 'Kaiti SC', 'Caveat', 'Segoe Print', 'Comic Sans MS', cursive;
 }
 * { box-sizing: border-box; }
 html, body {
@@ -133,6 +133,36 @@ main:not([data-renderer='webgl']) #letter {
   border: 1px solid var(--dock-border);
   box-shadow: 0 10px 30px rgba(26, 24, 22, 0.12);
 }
+/* Flat mode: single comfortable column instead of the three absolute slots. */
+main:not([data-renderer='webgl']) .writing {
+  padding: 8% 9% 10%;
+  box-sizing: border-box;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+main:not([data-renderer='webgl']) #greeting,
+main:not([data-renderer='webgl']) #message,
+main:not([data-renderer='webgl']) #signature {
+  position: static; left: auto; right: auto; top: auto; bottom: auto;
+  height: auto; max-height: none; width: auto;
+  display: block; justify-content: flex-start; align-items: flex-start;
+  margin: 0; overflow: visible;
+}
+main:not([data-renderer='webgl']) #greeting {
+  font-size: clamp(1rem, 7cqw, 1.7rem);
+  margin-bottom: 5cqw;
+  letter-spacing: .04em;
+}
+main:not([data-renderer='webgl']) #message {
+  font-size: clamp(.86rem, 5.6cqw, 1.18rem);
+  line-height: 1.85;
+  text-align: justify;
+}
+main:not([data-renderer='webgl']) #signature {
+  margin-top: 6cqw;
+  text-align: right;
+  font-size: clamp(.9rem, 5.8cqw, 1.24rem);
+}
 
 /* Floating glass dock matching Gallery.tsx (bg-white/90, border-stone-200/80, text-stone-700). */
 .dock {
@@ -228,4 +258,39 @@ main[data-renderer='webgl'] .notice {
     font-size: 0.62rem;
     white-space: nowrap;
   }
+}
+
+/* Loading veil: the cover proof stays visible underneath while the paper scene
+ * is assembled. Slow mobile networks see elapsed seconds instead of a blank wait. */
+#loader {
+  position: absolute;
+  left: 50%;
+  bottom: calc(max(1.25rem, env(safe-area-inset-bottom)) + 3.9rem);
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--dock-border);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.07);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.loader-ring {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 999px;
+  border: 2px solid rgba(120, 113, 108, 0.25);
+  border-top-color: rgba(120, 113, 108, 0.75);
+  animation: spin 900ms linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+main[data-renderer='webgl'] #loader,
+main[data-renderer='flat'] #loader { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .loader-ring { animation: none; }
 }

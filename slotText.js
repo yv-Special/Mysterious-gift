@@ -167,7 +167,7 @@ export async function loadCardFonts(card) {
   if (typeof document === "undefined" || !document.fonts) return;
   const mode = card?.font || "hand-en";
   const sample = `${card?.greeting || ""}${card?.message || ""}${card?.signature || ""}Dear ,—`;
-  const loads = [document.fonts.load('500 64px "Caveat"', sample)];
+  const loads = [document.fonts.load('500 64px "Caveat"', sample), document.fonts.load('400 64px "Great Vibes"', "Our love Grows stronger With every Passing year")];
   if (mode === "hand-zh") {
     loads.push(document.fonts.load('500 64px "Long Cang"', sample));
   }
@@ -261,4 +261,169 @@ export async function drawCardSlotsOnSheet(canvas, card) {
     }
   }
   ctx.restore();
+}
+
+/* ── Two-page letter ──────────────────────────────────────────────────────
+ * The letter is split at a paragraph break and laid on both inside pages.
+ * Both pages share one body font size (the largest that fits the tighter
+ * page), so the spread reads as a single piece of writing.
+ */
+export const PAGE_BOXES = {
+  left: {
+    greeting: { box: { x0: 0.10, y0: 0.128, x1: 0.90, y1: 0.206 }, align: "left" },
+    body: { box: { x0: 0.10, y0: 0.232, x1: 0.90, y1: 0.888 }, align: "left" },
+  },
+  right: {
+    body: { box: { x0: 0.10, y0: 0.090, x1: 0.90, y1: 0.800 }, align: "left" },
+    signature: { box: { x0: 0.26, y0: 0.836, x1: 0.90, y1: 0.888 }, align: "right" },
+  },
+};
+
+const BODY_FRACTION = 0.066;   // of page height, before fitting
+const PAGE_MIN_SCALE = 0.40;
+const PAGE_LINE_HEIGHT = 1.46;
+const PAGE_SCALE_STEP = 0.02;
+
+/** Split the letter at a paragraph break into [leftPageText, rightPageText]. */
+export function splitForPages(message) {
+  const paras = String(message || "").split(/\r?\n/);
+  if (paras.length < 3) return [message, ""];
+  const total = message.replace(/\s/g, "").length;
+  let acc = 0;
+  let cut = 1;
+  for (let i = 0; i < paras.length - 1; i += 1) {
+    acc += paras[i].replace(/\s/g, "").length;
+    cut = i + 1;
+    if (acc >= total * 0.47) break;
+  }
+  return [paras.slice(0, cut).join("\n"), paras.slice(cut).join("\n")];
+}
+
+function bodyMetrics(text, side, scale, measure, faceAspect) {
+  const { box } = PAGE_BOXES[side].body;
+  const fontH = BODY_FRACTION * scale;
+  const maxEm = ((box.x1 - box.x0) * faceAspect) / fontH;
+  const lines = wrapText(text, maxEm, measure);
+  const widest = Math.max(0, ...lines.map(measure));
+  const totalH = linesHeight(lines, fontH * PAGE_LINE_HEIGHT);
+  return { lines, widest, totalH, fits: widest <= maxEm + 1e-9 && totalH <= box.y1 - box.y0 + 1e-9 };
+}
+
+function drawBlock(ctx, { lines, align, box }, w, h, px, lineH, color, strokeInk, family) {
+  const bx = box.x0 * w;
+  const by = box.y0 * h;
+  const bw = (box.x1 - box.x0) * w;
+  const bh = (box.y1 - box.y0) * h;
+  ctx.font = `500 ${px}px ${family}`;
+  ctx.textAlign = align;
+  const x = align === "left" ? bx : bx + bw;
+  const single = lines.length === 1;
+  let y = single ? by + (bh - lineH) / 2 : by;
+  for (const line of lines) {
+    if (line === "") { y += lineH * BLANK_LINE_RATIO; continue; }
+    const yy = single ? y + lineH / 2 : y + lineH * 0.5;
+    if (strokeInk) ctx.strokeText(line, x, yy);
+    ctx.fillText(line, x, yy);
+    y += lineH;
+  }
+}
+
+/** Elegant script motto flanking each snowflake ornament. */
+export function drawFlakeLines(canvas, { cy, flakeW, left, right, color = "rgba(40, 68, 116, 0.92)" }) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const w = canvas.width;
+  const h = canvas.height;
+  const cx = w * 0.5;
+  const half = w * flakeW * 0.5;
+  const gap = w * 0.026;
+  const avail = cx - half - gap - w * 0.048;
+  let px = h * 0.040;
+  const setFont = () => { ctx.font = `400 ${px}px "Great Vibes", "Segoe Script", cursive`; };
+  setFont();
+  const widest = Math.max(ctx.measureText(left).width, ctx.measureText(right).width);
+  if (widest > avail) { px *= avail / widest; setFont(); }
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.textBaseline = "middle";
+  setFont();
+  ctx.textAlign = "right";
+  ctx.fillText(left, cx - half - gap, h * cy);
+  ctx.textAlign = "left";
+  ctx.fillText(right, cx + half + gap, h * cy);
+  ctx.restore();
+}
+
+/** Paint both inside pages of the open card. */
+export function drawTwoPageLetter(leftCanvas, rightCanvas, card) {
+  if (!leftCanvas || !rightCanvas || !card) return;
+  const ctxL = leftCanvas.getContext("2d");
+  const ctxR = rightCanvas.getContext("2d");
+  if (!ctxL || !ctxR) return;
+
+  const inkKey = card.ink && INK_COLORS[card.ink] ? card.ink : "black";
+  const color = INK_COLORS[inkKey];
+  const family = slotFontFamily(card.font);
+  const strokeInk = (card.font || "") === "hand-zh";
+  const REF_PX = 96;
+
+  const [leftText, rightText] = splitForPages(card.message);
+  ctxL.font = `500 ${REF_PX}px ${family}`;
+  const measure = (line) => ctxL.measureText(line).width / REF_PX;
+  const aspect = leftCanvas.width / leftCanvas.height;
+
+  // One shared scale: the biggest body size that fits BOTH pages.
+  let scale = 1;
+  let L = null;
+  let R = null;
+  for (; scale >= PAGE_MIN_SCALE - 1e-9; scale -= PAGE_SCALE_STEP) {
+    const s = Math.round(scale * 100) / 100;
+    L = bodyMetrics(leftText, "left", s, measure, aspect);
+    R = bodyMetrics(rightText, "right", s, measure, aspect);
+    if (L.fits && R.fits) { scale = s; break; }
+  }
+  scale = Math.max(scale, PAGE_MIN_SCALE);
+
+  const bodyPx = BODY_FRACTION * scale * leftCanvas.height;
+  const bodyLH = bodyPx * PAGE_LINE_HEIGHT;
+
+  const paint = (ctx, canvas, side, body, extra) => {
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.textBaseline = "middle";
+    ctx.lineWidth = Math.max(0.6, bodyPx * 0.014);
+    ctx.lineJoin = "round";
+    drawBlock(ctx, { lines: body.lines, align: PAGE_BOXES[side].body.align, box: PAGE_BOXES[side].body.box }, w, h, bodyPx, bodyLH, color, strokeInk, family);
+    if (extra) {
+      const px = extra.px;
+      ctx.lineWidth = Math.max(0.6, px * 0.014);
+      drawBlock(ctx, extra.spec, w, h, px, px * PAGE_LINE_HEIGHT, color, strokeInk, family);
+    }
+    ctx.restore();
+  };
+
+  // Left page: salutation (a touch larger than the body) + first half.
+  const greetParts = formatSlotParts("greeting", card.greeting);
+  const greetPx = bodyPx * 1.22;
+  const greetLine = greetParts
+    ? [greetParts.prefix + greetParts.core + greetParts.suffix]
+    : [];
+  paint(ctxL, leftCanvas, "left", L, {
+    px: greetPx,
+    spec: { lines: greetLine, align: PAGE_BOXES.left.greeting.align, box: PAGE_BOXES.left.greeting.box },
+  });
+
+  // Right page: second half + signature.
+  const sigParts = formatSlotParts("signature", card.signature);
+  const sigPx = bodyPx * 1.0;
+  const sigLine = sigParts ? [sigParts.prefix + sigParts.core + sigParts.suffix] : [];
+  const bodyTop = PAGE_BOXES.right.body.box.y0;
+  const sigTop = Math.min(bodyTop + (R.totalH || 0) + 0.028, 0.848);
+  const sigBox = { x0: 0.26, y0: sigTop, x1: 0.90, y1: Math.min(sigTop + 0.052, 0.900) };
+  paint(ctxR, rightCanvas, "right", R, {
+    px: sigPx,
+    spec: { lines: sigLine, align: PAGE_BOXES.right.signature.align, box: sigBox },
+  });
 }

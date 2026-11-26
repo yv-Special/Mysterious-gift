@@ -40,7 +40,8 @@ import {
 } from "./motion.js";
 import {
   STUDIO_BG_HEX,
-  createInsideLeftCanvas,
+  createInsidePageCanvas,
+  stampMotif,
   createInsideRightBaseCanvas,
   createBlankSheetCanvas,
   createBackCanvas,
@@ -65,7 +66,7 @@ import {
   installMoverShader,
 } from "./live.js";
 import { createCardParticles, createSparkleTexture } from "./particles.js";
-import { drawCardSlotsOnSheet } from "./slotText.js";
+import { drawFlakeLines, drawTwoPageLetter, loadCardFonts } from "./slotText.js";
 
 /* ── Constants mirrored from the engine ── */
 
@@ -357,10 +358,11 @@ export async function createScene(canvas, card) {
    * the envelope drops away and the card slides out of the top. The envelope
    * lives in `outer` so it inherits the same float and drag-orbit as the card.
    */
-  const ENV_RATIO = 1724 / 1164; // portrait envelope art
-  const ENV_W = CARD_W * 1.03;
+  const ENV_RATIO = 1342 / 1000; // portrait envelope-back art
+  const ENV_W = CARD_W * 1.07;
   const ENV_H = ENV_W * ENV_RATIO;
-  const ENV_SEAL = [0.189, 0.858]; // wax seal, normalised inside the art
+  const ENV_SEAL = [0.5, 0.447]; // wax seal, normalised on the flap tip
+  const SEAL_SIZE = ENV_W * 0.205;
 
   const envelopeGroup = new THREE.Group();
   envelopeGroup.position.set(0, 0, CARD_THICKNESS + 0.12);
@@ -368,13 +370,13 @@ export async function createScene(canvas, card) {
   outer.add(envelopeGroup);
 
   const envMat = new THREE.MeshStandardMaterial({
-    map: makeTexture(await loadImage("./envelope.webp"), maxAnisotropy),
+    map: makeTexture(await loadImage("./env-back.webp"), maxAnisotropy),
     normalMap: paperNormalTex,
     normalScale: new THREE.Vector2(0.3, 0.3),
     transparent: true,
     roughness: 0.88,
     metalness: 0.02,
-    side: THREE.DoubleSide,
+    side: THREE.FrontSide,
     // Always drawn over the card so the tilt can never let a corner poke through.
     depthTest: false,
     depthWrite: false,
@@ -389,7 +391,7 @@ export async function createScene(canvas, card) {
     roughness: 0.94,
     metalness: 0,
     transparent: true,
-    side: THREE.DoubleSide,
+    side: THREE.FrontSide,
     depthTest: false,
     depthWrite: false,
   });
@@ -400,6 +402,26 @@ export async function createScene(canvas, card) {
   envBack.position.z = -0.012;
   envBack.renderOrder = 9;
   envelopeGroup.add(envBack);
+
+  // Wax seal: its own piece so it can be clicked off before anything else moves.
+  const sealMat = new THREE.MeshStandardMaterial({
+    map: makeTexture(await loadImage("./seal.webp"), maxAnisotropy),
+    normalMap: paperNormalTex,
+    normalScale: new THREE.Vector2(0.35, 0.35),
+    transparent: true,
+    roughness: 0.62,
+    metalness: 0.08,
+    depthTest: false,
+    depthWrite: false,
+  });
+  const sealMesh = new THREE.Mesh(new THREE.PlaneGeometry(SEAL_SIZE, SEAL_SIZE), sealMat);
+  sealMesh.position.set(
+    (ENV_SEAL[0] - 0.5) * ENV_W,
+    (0.5 - ENV_SEAL[1]) * ENV_H,
+    0.03,
+  );
+  sealMesh.renderOrder = 12;
+  envelopeGroup.add(sealMesh);
 
   // Warm bloom that flares over the wax when the seal breaks.
   const sealGlow = new THREE.Sprite(
@@ -420,8 +442,8 @@ export async function createScene(canvas, card) {
   sealGlow.scale.set(0.62, 0.62, 1);
   envelopeGroup.add(sealGlow);
 
-  const CARD_TUCK = 0.25; // how far the card starts down inside the envelope
-  const CARD_STOW = 0.9;  // and slightly shrunk, so nothing peeks out
+  const CARD_TUCK = 0.2; // how far the card starts down inside the envelope
+  const CARD_STOW = 0.8;  // and shrunk, so no corner peeks out of the sleeve
   center.position.y = -CARD_TUCK;
   center.scale.setScalar(CARD_STOW);
 
@@ -484,17 +506,20 @@ export async function createScene(canvas, card) {
       : winterEffects
         ? "Warm Wishes · Christmas Card"
         : (card && card.title) || "Warm Wishes";
+  /* Both inside pages carry handwriting now: salutation + first half on the
+   * left page, the rest + signature on the right. */
+  await loadCardFonts(card);
+  const leftCanvas = createInsidePageCanvas({ spine: "right" });
+  const rightCanvas = createInsidePageCanvas({ spine: "left" });
+  if (motifImg) stampMotif(leftCanvas, motifImg, [0.5, 0.088], 0.125, 0.92);
+  if (motifImg) stampMotif(rightCanvas, motifImg, [0.5, 0.921], 0.115, 0.92);
+  drawTwoPageLetter(leftCanvas, rightCanvas, card);
+  drawFlakeLines(leftCanvas, { cy: 0.088, flakeW: 0.125, left: "Hand held", right: "heart given" });
+  drawFlakeLines(rightCanvas, { cy: 0.921, flakeW: 0.115, left: "vows spoken", right: "love sealed" });
+  insideLeft.map = makeTexture(leftCanvas, maxAnisotropy);
+
   if (motifImg) {
     const first = layout.motifs[0];
-    insideLeft.map = makeTexture(
-      createInsideLeftCanvas(baseImg, {
-        at: first.at || [0.5, 0.44],
-        width: first.width ?? 0.52,
-        turn: first.turn,
-        crop: motifImg,
-      }),
-      maxAnisotropy,
-    );
     const backMotif = layout.motifs[1] || first;
     const backMotifImg =
       layout.motifs[1] && layout.motifs[1].src !== first.src
@@ -514,17 +539,15 @@ export async function createScene(canvas, card) {
       maxAnisotropy,
     );
   } else {
-    insideLeft.map = makeTexture(createInsideRightBaseCanvas(), maxAnisotropy);
     back.map = makeTexture(createBackCanvas(null, null, backLine), maxAnisotropy);
   }
   insideLeft.needsUpdate = true;
-  insideRightBase.map = makeTexture(createInsideRightBaseCanvas(), maxAnisotropy);
+
+  insideRightBase.map = makeTexture(rightCanvas, maxAnisotropy);
   insideRightBase.needsUpdate = true;
   back.needsUpdate = true;
-  const sheetCanvas = createBlankSheetCanvas();
-  await drawCardSlotsOnSheet(sheetCanvas, card);
-  insideRightSheet.map = makeTexture(sheetCanvas, maxAnisotropy);
-  insideRightSheet.needsUpdate = true;
+  // The single right-hand insert sheet is retired: both pages are painted now.
+  if (sheetMesh) sheetMesh.visible = false;
 
   /* Raised paper-cut pieces: each with its own relief, foil, and LampGate floor=1. */
   const lifted = itemImages.map((item, idx) => {
@@ -780,6 +803,10 @@ export async function createScene(canvas, card) {
   let wrapped = true;
   let wrapT = 0;
   const WRAP_DUR = 1.2;
+  /* Wax step: tap 1 peels the seal off, tap 2 opens the envelope. */
+  let sealBroken = false;
+  let sealT = 0;
+  const SEAL_DUR = 0.62;
 
   function applyTilt(x, y) {
     const nx = Math.min(1, Math.max(-1, Number.isFinite(x) ? x : 0));
@@ -914,9 +941,16 @@ export async function createScene(canvas, card) {
       }
     }
 
-    /* Envelope pull-out: card rises out of the top while the sleeve drops. */
+    /* Wax seal peels off on the first tap; the sleeve drops on the second. */
+    if (sealBroken && sealT < 1) sealT = Math.min(1, sealT + dt / SEAL_DUR);
     if (wrapped === false && wrapT < 1) wrapT = Math.min(1, wrapT + dt / WRAP_DUR);
     if (envelopeGroup) {
+      const st = sealT;
+      sealMesh.visible = st < 0.999;
+      sealMesh.position.z = 0.03 + st * 0.85;
+      sealMesh.scale.setScalar(1 + st * 0.25);
+      sealMesh.rotation.z = st * 0.42;
+
       const k = wrapped ? 0 : wrapT;
       const cardRise = 1 - Math.pow(1 - k, 3);
       const envDrop = k * k * k;
@@ -926,11 +960,13 @@ export async function createScene(canvas, card) {
       const fade = 1 - THREE.MathUtils.smoothstep(k, 0.32, 0.92);
       envMat.opacity = fade;
       envBackMat.opacity = fade;
+      sealMat.opacity = (1 - Math.pow(st, 1.5)) * fade;
       envelopeGroup.visible = fade > 0.004;
-      sealGlow.material.opacity =
-        k > 0 && k < 0.3 ? Math.pow(1 - k / 0.3, 1.6) * 0.95 : 0;
-      const pulse = 1 + (k > 0 && k < 0.3 ? (1 - k / 0.3) * 0.9 : 0);
-      sealGlow.scale.set(0.62 * pulse, 0.62 * pulse, 1);
+
+      const flash = st > 0 && st < 0.45 ? Math.pow(1 - st / 0.45, 1.2) : 0;
+      sealGlow.material.opacity = flash * 0.95;
+      const pulse = 1 + flash * 0.9;
+      sealGlow.scale.set(0.95 * pulse, 0.95 * pulse, 1);
     }
 
     const progress = layoutCard(dt);
@@ -993,7 +1029,7 @@ export async function createScene(canvas, card) {
     );
 
     // Pointer lamp eases in/out and updates its view-space gate uniform.
-    const targetLamp = pointerOver && progress < 0.4 ? lampWanted : 0;
+    const targetLamp = pointerOver && progress < 0.4 && !wrapped ? lampWanted : 0;
     hoverLamp.intensity = THREE.MathUtils.lerp(
       hoverLamp.intensity,
       targetLamp,
@@ -1022,9 +1058,10 @@ export async function createScene(canvas, card) {
             Math.sin(elapsed * 13.7) * 0.04 +
             Math.sin(elapsed * 1.9) * 0.05;
       const flare = 1 + glowFlare * 1.6;
-      glowLight.intensity = glowBaseIntensity * flick * flare * (0.15 + 0.85 * openFade);
-      glowSprite.visible = progress < 0.7;
-      glowSpriteMat.opacity = Math.min(1, 0.68 * flick * flare * (0.2 + 0.8 * openFade));
+      const reveal = wrapped ? 0 : Math.min(1, wrapT * 2.5);
+      glowLight.intensity = glowBaseIntensity * flick * flare * (0.15 + 0.85 * openFade) * reveal;
+      glowSprite.visible = progress < 0.7 && !wrapped;
+      glowSpriteMat.opacity = Math.min(1, 0.68 * flick * flare * (0.2 + 0.8 * openFade)) * (wrapped ? 0 : 1);
     }
 
     // Ambient particles (snow / gold motes / petals), carried by pointer wind.
@@ -1117,16 +1154,28 @@ export async function createScene(canvas, card) {
     isWrapped() {
       return wrapped;
     },
-    /** Break the wax and pull the card out of the envelope. */
+    /** True once the wax is off but the envelope is still closed. */
+    isSealBroken() {
+      return sealBroken;
+    },
+    /**
+     * Tap 1: peel the wax seal away (does not open the envelope).
+     * Tap 2: drop the sleeve and let the card rise out.
+     */
     unwrap() {
-      if (!wrapped) return;
-      wrapped = false;
       const p = new THREE.Vector3(
         (ENV_SEAL[0] - 0.5) * ENV_W,
         (0.5 - ENV_SEAL[1]) * ENV_H,
         0.1,
       );
       envelopeGroup.localToWorld(p);
+      if (!sealBroken) {
+        sealBroken = true;
+        triggerBurst(p);
+        return;
+      }
+      if (!wrapped) return;
+      wrapped = false;
       triggerBurst(p);
     },
     /** Feed pointer hover + sweep velocity (px/s) for Pointer Lamp & wind. */

@@ -113,6 +113,59 @@ export function createInsideRightBaseCanvas() {
   return canvas;
 }
 
+
+/**
+ * An inside page ready to carry handwriting: paper grain, the spine shade
+ * against the fold, and the same hairline frame the insert sheet uses.
+ * `spine` says where the fold sits: "right" for the left page, "left" for the right.
+ */
+export function createInsidePageCanvas({ spine = "right", tint = INSIDE_TINT, frame = true } = {}) {
+  const canvas = document.createElement("canvas");
+  canvas.width = TEX_W;
+  canvas.height = TEX_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+  addPaperGrain(ctx, TEX_W, TEX_H, tint);
+  const w = spine === "right" ? 40 : 44;
+  const g = spine === "right"
+    ? ctx.createLinearGradient(TEX_W - w, 0, TEX_W, 0)
+    : ctx.createLinearGradient(0, 0, w, 0);
+  g.addColorStop(0, spine === "right" ? "rgba(0,0,0,0)" : "rgba(90,75,60,0.13)");
+  g.addColorStop(1, spine === "right" ? "rgba(90,75,60,0.13)" : "rgba(0,0,0,0)");
+  ctx.fillStyle = g;
+  if (spine === "right") ctx.fillRect(TEX_W - w, 0, w, TEX_H);
+  else ctx.fillRect(0, 0, w, TEX_H);
+  if (frame) {
+    ctx.strokeStyle = "rgba(150, 134, 118, 0.15)";
+    ctx.lineWidth = 2.4;
+    ctx.strokeRect(22, 22, TEX_W - 44, TEX_H - 44);
+  }
+  return canvas;
+}
+
+/** Small motif stamped onto a page canvas (letterhead ornament). */
+export function stampMotif(canvas, crop, at = [0.5, 0.08], width = 0.13, alpha = 0.94) {
+  if (!crop) return canvas;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+  const dw = canvas.width * width;
+  const dh = (crop.height / crop.width) * dw;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.shadowColor = "rgba(84, 66, 48, 0.26)";
+  ctx.shadowBlur = 10;
+  ctx.shadowOffsetY = 4;
+  ctx.drawImage(
+    crop,
+    canvas.width * at[0] - dw / 2,
+    canvas.height * at[1] - dh / 2,
+    dw,
+    dh,
+  );
+  ctx.restore();
+  return canvas;
+}
+
 /** The blank insert sheet: grain, inside tint, a hairline frame (2x crisp for 3D ink). */
 export function createBlankSheetCanvas() {
   const w = 1170;

@@ -16,8 +16,10 @@ const TAP_MAX_MS = 600;
 
 function syncToggleButton() {
   const sealed = scene?.isWrapped?.() === true;
-  button.setAttribute('aria-label', sealed ? '拆开信封' : open ? '合上贺卡' : '翻开贺卡');
-  button.setAttribute('title', sealed ? '拆开信封' : open ? '合上' : '翻开');
+  const waxed = sealed && scene?.isSealBroken?.() !== true;
+  const label = waxed ? '拆开火漆' : sealed ? '打开信封' : open ? '合上贺卡' : '翻开贺卡';
+  button.setAttribute('aria-label', label);
+  button.setAttribute('title', label);
   button.setAttribute('aria-expanded', String(open));
 }
 
@@ -133,6 +135,26 @@ function attachControls() {
 
 async function load() {
   statusLine.textContent = '';
+  const started = performance.now();
+  const loaderText = $('#loader-text');
+  const tick = setInterval(() => {
+    if (!loaderText) return;
+    const s = Math.round((performance.now() - started) / 1000);
+    loaderText.textContent = s < 4 ? '正在装帧…' : `正在装帧… ${s}s`;
+  }, 1000);
+  const giveUp = setTimeout(() => {
+    if (main.dataset.renderer !== 'loading') return;
+    main.dataset.renderer = 'flat';
+    statusLine.textContent = '网速较慢，已切到平面阅读：点卡片就能翻页读信。';
+  }, 38000);
+  try {
+    return await boot();
+  } finally {
+    clearInterval(tick);
+  }
+}
+
+async function boot() {
   const response = await fetch('./card.json', { cache: 'no-store' });
   if (!response.ok) throw new Error(`card.json: HTTP ${response.status}`);
   const card = await response.json();
@@ -151,6 +173,7 @@ async function load() {
     scene = await createScene($('canvas'), card);
     scene.setOpen(open);
     main.dataset.renderer = 'webgl';
+    syncToggleButton();
     statusLine.textContent = '';
   } catch (error) {
     main.dataset.renderer = 'flat';

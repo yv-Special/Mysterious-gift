@@ -12,7 +12,11 @@
 <body>
   <main data-renderer="loading">
     <header><h1>纸雕贺卡</h1></header>
-    <div class="stage" id="stage">
+    <div id="loader" role="status" aria-live="polite">
+    <span class="loader-ring" aria-hidden="true"></span>
+    <span id="loader-text">正在装帧…</span>
+  </div>
+  <div class="stage" id="stage">
       <img class="proof" src="./cover.webp" alt="纸雕贺卡封面" draggable="false">
       <canvas aria-hidden="true"></canvas>
       <article id="letter" aria-label="贺卡内页" hidden><div class="writing" tabindex="0" role="region" aria-label="内页文字"><p id="greeting"></p><p id="message"></p><p id="signature"></p></div></article>
