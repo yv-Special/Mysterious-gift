@@ -45,7 +45,7 @@ export const SLOT_FONT_FRACTION = {
 };
 
 export const INK_COLORS = {
-  black: "#2b2623",
+  black: "#231d19",
   red: "#a8322c",
   gold: "#c9a24a",
 };
@@ -271,17 +271,17 @@ export async function drawCardSlotsOnSheet(canvas, card) {
 export const PAGE_BOXES = {
   left: {
     greeting: { box: { x0: 0.10, y0: 0.128, x1: 0.90, y1: 0.206 }, align: "left" },
-    body: { box: { x0: 0.10, y0: 0.232, x1: 0.90, y1: 0.888 }, align: "left" },
+    body: { box: { x0: 0.082, y0: 0.228, x1: 0.918, y1: 0.906 }, align: "left" },
   },
   right: {
-    body: { box: { x0: 0.10, y0: 0.090, x1: 0.90, y1: 0.800 }, align: "left" },
+    body: { box: { x0: 0.082, y0: 0.084, x1: 0.918, y1: 0.816 }, align: "left" },
     signature: { box: { x0: 0.26, y0: 0.836, x1: 0.90, y1: 0.888 }, align: "right" },
   },
 };
 
 const BODY_FRACTION = 0.066;   // of page height, before fitting
 const PAGE_MIN_SCALE = 0.40;
-const PAGE_LINE_HEIGHT = 1.46;
+const PAGE_LINE_HEIGHT = 1.40;
 const PAGE_SCALE_STEP = 0.02;
 
 /** Split the letter at a paragraph break into [leftPageText, rightPageText]. */
@@ -393,7 +393,7 @@ export function drawTwoPageLetter(leftCanvas, rightCanvas, card) {
     ctx.save();
     ctx.fillStyle = color;
     ctx.textBaseline = "middle";
-    ctx.lineWidth = Math.max(0.6, bodyPx * 0.014);
+    ctx.lineWidth = Math.max(1.2, bodyPx * 0.032);
     ctx.lineJoin = "round";
     drawBlock(ctx, { lines: body.lines, align: PAGE_BOXES[side].body.align, box: PAGE_BOXES[side].body.box }, w, h, bodyPx, bodyLH, color, strokeInk, family);
     if (extra) {

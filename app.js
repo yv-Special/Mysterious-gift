@@ -9,6 +9,10 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 let scene;
 let music = { start() {} };
 let open = false;
+let ready = false;
+let zoomed = false;
+let lastTapAt = 0;
+let closeTimer = 0;
 
 const ORBIT_PER_PX = { yaw: 0.0065, pitch: 0.005 };
 const TAP_MOVE_PX = 7;
@@ -23,8 +27,19 @@ function syncToggleButton() {
   button.setAttribute('aria-expanded', String(open));
 }
 
+function setZoom(on) {
+  zoomed = Boolean(on);
+  const el = $('#stage');
+  if (!el) return;
+  el.classList.toggle('zoomed', zoomed);
+  if (!zoomed) el.style.transform = '';
+}
+
 function flip() {
-  if (button.disabled) return;
+  if (button.disabled || !ready) return;
+  clearTimeout(closeTimer);
+  closeTimer = 0;
+  if (zoomed) setZoom(false);
   // First tap breaks the wax and pulls the card out of its envelope.
   if (scene?.isWrapped?.()) {
     scene.unwrap();
@@ -110,7 +125,35 @@ function attachControls() {
     const onWriting = down.onWriting;
     down = null;
     if (isTap) {
-      if (onWriting) return;
+      if (onWriting || !ready) return;
+      // While the letters are open, a double tap zooms in to read, a single tap closes.
+      if (open && main.dataset.renderer === 'webgl') {
+        const now = performance.now();
+        if (zoomed) { setZoom(false); lastTapAt = 0; return; }
+        if (now - lastTapAt < 320) {
+          lastTapAt = 0;
+          clearTimeout(closeTimer);
+          const el = $('#stage');
+          const box = el.getBoundingClientRect();
+          const leftHalf = event.clientX - box.left < box.width / 2;
+          // Scale about the page, then slide that page to the middle of the screen.
+          const sc = 1.78;
+          const fx = leftHalf ? 0.25 : 0.75;
+          const tx = box.width * (0.5 - fx * sc);
+          const ty = box.height * (0.5 - 0.48 * sc);
+          el.style.transformOrigin = '0 0';
+          el.style.transform = `translate(${tx}px, ${ty}px) scale(${sc})`;
+          setZoom(true);
+          return;
+        }
+        lastTapAt = now;
+        const onCardWhenOpen = scene?.hitCard ? scene.hitCard(event.clientX, event.clientY) : true;
+        if (onCardWhenOpen) {
+          clearTimeout(closeTimer);
+          closeTimer = setTimeout(() => { closeTimer = 0; flip(); }, 330);
+        }
+        return;
+      }
       // Match ChristmasCard3D.tsx: clicking the card toggles open/close directly.
       const onCard = scene?.hitCard ? scene.hitCard(event.clientX, event.clientY) : true;
       if (onCard) flip();
@@ -145,6 +188,9 @@ async function load() {
   const giveUp = setTimeout(() => {
     if (main.dataset.renderer !== 'loading') return;
     main.dataset.renderer = 'flat';
+    ready = true;
+    button.disabled = false;
+    syncToggleButton();
     statusLine.textContent = '网速较慢，已切到平面阅读：点卡片就能翻页读信。';
   }, 38000);
   try {
@@ -165,7 +211,6 @@ async function boot() {
   document.title = card.title;
   if (card.credit === false) $('#credit')?.remove();
   music = createMusic(card.music, $('#bgm'), $('#music-toggle'));
-  button.disabled = false;
   syncToggleButton();
   attachControls();
   try {
@@ -173,10 +218,15 @@ async function boot() {
     scene = await createScene($('canvas'), card);
     scene.setOpen(open);
     main.dataset.renderer = 'webgl';
+    ready = true;
+    button.disabled = false;
     syncToggleButton();
     statusLine.textContent = '';
   } catch (error) {
     main.dataset.renderer = 'flat';
+    ready = true;
+    button.disabled = false;
+    syncToggleButton();
     statusLine.textContent = '3D 未能载入，已切换为平面预览，仍可翻页。';
     console.warn('3D preview unavailable:', error);
   }

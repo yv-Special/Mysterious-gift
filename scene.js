@@ -74,7 +74,7 @@ const CAMERA_FOV = 30;
 /** Match src/lib/cardStage.ts framing on full-viewport stage with bottom dock. */
 const FIT_HEIGHT = 0.66;
 const FIT_WIDTH_CLOSED = 0.74;
-const FIT_WIDTH_OPEN = 0.86;
+const FIT_WIDTH_OPEN = 0.94;
 const DOCK_RESERVE = 0.08;
 const MOBILE_ASPECT_FLOOR = 0.46;
 
@@ -363,6 +363,13 @@ export async function createScene(canvas, card) {
   const ENV_H = ENV_W * ENV_RATIO;
   const ENV_SEAL = [0.5, 0.447]; // wax seal, normalised on the flap tip
   const SEAL_SIZE = ENV_W * 0.205;
+  const FLAP_STRIP = 0.553;      // the flap art strip, as a share of the envelope height
+  const FLAP_H = ENV_H * FLAP_STRIP;
+  const FLAP_OPEN = 1.42; // the old lid only half-lifts while it dissolves into the open art
+  // Open state art: the pocket with its lid already standing up, cut from the
+  // reference photo (body 1000x1342, lid 1000x543 stacked above it).
+  const OPEN_ASPECT = 1885 / 1000;
+  const OPEN_H = ENV_W * OPEN_ASPECT;
 
   const envelopeGroup = new THREE.Group();
   envelopeGroup.position.set(0, 0, CARD_THICKNESS + 0.12);
@@ -370,20 +377,60 @@ export async function createScene(canvas, card) {
   outer.add(envelopeGroup);
 
   const envMat = new THREE.MeshStandardMaterial({
-    map: makeTexture(await loadImage("./env-back.webp"), maxAnisotropy),
+    map: makeTexture(await loadImage("./env-base.webp"), maxAnisotropy),
     normalMap: paperNormalTex,
     normalScale: new THREE.Vector2(0.3, 0.3),
     transparent: true,
     roughness: 0.88,
     metalness: 0.02,
     side: THREE.FrontSide,
-    // Always drawn over the card so the tilt can never let a corner poke through.
     depthTest: false,
     depthWrite: false,
   });
   const envMesh = new THREE.Mesh(new THREE.PlaneGeometry(ENV_W, ENV_H), envMat);
-  envMesh.renderOrder = 10;
+  envMesh.renderOrder = 20;
   envelopeGroup.add(envMesh);
+
+  /* The opened pocket: same body, lid standing up. Its body is punched out
+   * where the paper sits, so the card behind shows through the slot. */
+  const envOpenMat = new THREE.MeshStandardMaterial({
+    map: makeTexture(await loadImage("./env-open-body.webp"), maxAnisotropy),
+    normalMap: paperNormalTex,
+    normalScale: new THREE.Vector2(0.3, 0.3),
+    transparent: true,
+    opacity: 0,
+    roughness: 0.88,
+    metalness: 0.02,
+    side: THREE.FrontSide,
+    depthTest: false,
+    depthWrite: false,
+  });
+  const envOpenMesh = new THREE.Mesh(new THREE.PlaneGeometry(ENV_W, ENV_H), envOpenMat);
+  envOpenMesh.position.set(0, 0, 0.002);
+  envOpenMesh.renderOrder = 20.5;
+  envOpenMesh.visible = false;
+  envelopeGroup.add(envOpenMesh);
+
+  /* The lid stands up from the same hinge, but it lives *behind* the card:
+   * the card slides out in front of it, exactly like paper does. */
+  const LID_H = ENV_W * (554 / 1000);
+  const envLidMat = new THREE.MeshStandardMaterial({
+    map: makeTexture(await loadImage("./env-open-lid.webp"), maxAnisotropy),
+    normalMap: paperNormalTex,
+    normalScale: new THREE.Vector2(0.3, 0.3),
+    transparent: true,
+    opacity: 0,
+    roughness: 0.88,
+    metalness: 0.02,
+    side: THREE.FrontSide,
+    depthTest: true,
+    depthWrite: true,
+  });
+  const envLid = new THREE.Mesh(new THREE.PlaneGeometry(ENV_W, LID_H), envLidMat);
+  envLid.position.set(0, ENV_H / 2 + LID_H / 2, -0.22);
+  envLid.renderOrder = -2;          // behind the card, which renders at 0
+  envLid.visible = false;
+  envelopeGroup.add(envLid);
 
   // Cream backing so the envelope still reads as paper when it tilts.
   const envBackMat = new THREE.MeshStandardMaterial({
@@ -395,12 +442,17 @@ export async function createScene(canvas, card) {
     depthTest: false,
     depthWrite: false,
   });
+  // Cream backing for the lower body only: it stops below the slot's tip, so the
+  // opening really looks through to the card and never at a flat cream wall.
+  const ENV_BACK_TOP = 0.55;
+  const ENV_BACK_BOTTOM = -ENV_H * 0.497;
   const envBack = new THREE.Mesh(
-    new THREE.PlaneGeometry(ENV_W * 0.994, ENV_H * 0.994),
+    new THREE.PlaneGeometry(ENV_W * 0.994, ENV_BACK_TOP - ENV_BACK_BOTTOM),
     envBackMat,
   );
+  envBack.position.y = (ENV_BACK_TOP + ENV_BACK_BOTTOM) / 2;
   envBack.position.z = -0.012;
-  envBack.renderOrder = 9;
+  envBack.renderOrder = 19;
   envelopeGroup.add(envBack);
 
   // Wax seal: its own piece so it can be clicked off before anything else moves.
@@ -420,7 +472,7 @@ export async function createScene(canvas, card) {
     (0.5 - ENV_SEAL[1]) * ENV_H,
     0.03,
   );
-  sealMesh.renderOrder = 12;
+  sealMesh.renderOrder = 22;
   envelopeGroup.add(sealMesh);
 
   // Warm bloom that flares over the wax when the seal breaks.
@@ -442,9 +494,51 @@ export async function createScene(canvas, card) {
   sealGlow.scale.set(0.62, 0.62, 1);
   envelopeGroup.add(sealGlow);
 
-  const CARD_TUCK = 0.2; // how far the card starts down inside the envelope
-  const CARD_STOW = 0.8;  // and shrunk, so no corner peeks out of the sleeve
-  center.position.y = -CARD_TUCK;
+  /* Top flap: its own hinged piece so it can really turn over, the way paper
+   * does. Two faces — the cream art outside, the navy-and-gold liner inside. */
+  const flapGroup = new THREE.Group();
+  flapGroup.position.set(0, ENV_H / 2, 0.004);
+  envelopeGroup.add(flapGroup);
+
+  const flapFrontMat = new THREE.MeshStandardMaterial({
+    map: makeTexture(await loadImage("./env-flap.webp"), maxAnisotropy),
+    normalMap: paperNormalTex,
+    normalScale: new THREE.Vector2(0.3, 0.3),
+    transparent: true,
+    roughness: 0.88,
+    metalness: 0.02,
+    side: THREE.FrontSide,
+    depthTest: false,
+    depthWrite: false,
+  });
+  const flapFront = new THREE.Mesh(new THREE.PlaneGeometry(ENV_W, FLAP_H), flapFrontMat);
+  flapFront.position.y = -FLAP_H / 2;
+  flapFront.renderOrder = 21;
+  flapGroup.add(flapFront);
+
+  const flapBackMat = new THREE.MeshStandardMaterial({
+    map: makeTexture(await loadImage("./env-liner.webp"), maxAnisotropy),
+    normalMap: paperNormalTex,
+    normalScale: new THREE.Vector2(0.25, 0.25),
+    transparent: true,
+    roughness: 0.9,
+    metalness: 0.05,
+    side: THREE.FrontSide,
+    depthTest: false,
+    depthWrite: false,
+  });
+  const flapBack = new THREE.Mesh(new THREE.PlaneGeometry(ENV_W, FLAP_H), flapBackMat);
+  flapBack.position.y = -FLAP_H / 2;
+  flapBack.position.z = -0.003;
+  flapBack.rotation.y = Math.PI; // face the room once the flap has turned over
+  flapBack.renderOrder = 20.4;
+  flapBack.visible = false; // the liner is baked into the new open art
+  flapGroup.add(flapFront);
+  flapGroup.add(flapBack); // kept for geometry, never drawn
+
+    const CARD_STOW = 0.8;  // shrunk, so it sits neatly inside the sleeve
+  const CARD_STOW_Y = ENV_H / 2 - (CARD_H * CARD_STOW) / 2 - 0.02; // its top edge at the flap hinge
+  center.position.y = CARD_STOW_Y;
   center.scale.setScalar(CARD_STOW);
 
   /* Load layout.json + art + optional baked relief maps. */
@@ -802,7 +896,11 @@ export async function createScene(canvas, card) {
   /* Envelope state: sealed until the first tap, then a 1.2 s pull-out. */
   let wrapped = true;
   let wrapT = 0;
-  const WRAP_DUR = 1.2;
+  const WRAP_DUR = 1.55;
+  /* The flap turns over before anything else moves. */
+  let flapT = 0;
+  let openHold = 0;   // beat of stillness once the lid is fully up
+  const FLAP_DUR = 0.66;
   /* Wax step: tap 1 peels the seal off, tap 2 opens the envelope. */
   let sealBroken = false;
   let sealT = 0;
@@ -943,7 +1041,12 @@ export async function createScene(canvas, card) {
 
     /* Wax seal peels off on the first tap; the sleeve drops on the second. */
     if (sealBroken && sealT < 1) sealT = Math.min(1, sealT + dt / SEAL_DUR);
-    if (wrapped === false && wrapT < 1) wrapT = Math.min(1, wrapT + dt / WRAP_DUR);
+    if (wrapped === false && wrapT < 1) {
+      /* Beat of stillness once the lid is fully up, then the card rises. */
+      if (flapT >= 1) openHold += dt;
+      if (flapT >= 1 && openHold > 0.62) wrapT = Math.min(1, wrapT + dt / WRAP_DUR);
+    }
+    if (wrapped === false && flapT < 1) flapT = Math.min(1, flapT + dt / FLAP_DUR);
     if (envelopeGroup) {
       const st = sealT;
       sealMesh.visible = st < 0.999;
@@ -951,15 +1054,34 @@ export async function createScene(canvas, card) {
       sealMesh.scale.setScalar(1 + st * 0.25);
       sealMesh.rotation.z = st * 0.42;
 
+      const ft = flapT <= 0 ? 0 : flapT < 0.5 ? 2 * flapT * flapT : 1 - Math.pow(-2 * flapT + 2, 2) / 2;
+      flapGroup.rotation.x = FLAP_OPEN * ft;
+      flapGroup.visible = ft < 0.58;
+      /* Cross-fade into the photographed open pocket: the sealed face and its
+       * lid dissolve while the standing lid rises into place. */
+      const openIn = THREE.MathUtils.smoothstep(ft, 0.40, 0.86);
+      const openEase = openIn;
       const k = wrapped ? 0 : wrapT;
       const cardRise = 1 - Math.pow(1 - k, 3);
-      const envDrop = k * k * k;
-      center.position.y = -CARD_TUCK * (1 - cardRise);
+      const envDrop = Math.pow(k, 1.5);
+      center.position.y = CARD_STOW_Y * (1 - cardRise);
       center.scale.setScalar(CARD_STOW + (1 - CARD_STOW) * cardRise);
-      envelopeGroup.position.y = -4.6 * envDrop;
-      const fade = 1 - THREE.MathUtils.smoothstep(k, 0.32, 0.92);
-      envMat.opacity = fade;
-      envBackMat.opacity = fade;
+      envelopeGroup.position.y = -6.2 * envDrop;
+      const fade = 1 - THREE.MathUtils.smoothstep(k, 0.34, 0.70);
+      const backFade = 1 - THREE.MathUtils.smoothstep(k, 0.08, 0.42);
+      // The lid sits behind the card once it is pulled out, so it leaves first.
+      const flapFade = 1 - THREE.MathUtils.smoothstep(k, 0.12, 0.34);
+      envMat.opacity = fade * (1 - THREE.MathUtils.smoothstep(ft, 0.38, 0.80));
+      envBackMat.opacity = backFade;
+      // the old lid leaves early, so the two lids never overlap on screen
+      flapFrontMat.opacity = flapFade * (1 - Math.min(1, ft * 2.2));
+      flapBackMat.opacity = 0;
+      envOpenMat.opacity = fade * openEase;
+      envOpenMesh.visible = envOpenMat.opacity > 0.004;
+      envOpenMesh.position.y = -0.16 * (1 - ft);
+      envLidMat.opacity = envOpenMat.opacity;
+      envLid.visible = envOpenMat.opacity > 0.004;
+      envLid.position.y = ENV_H / 2 + LID_H / 2 - 0.16 * (1 - ft);
       sealMat.opacity = (1 - Math.pow(st, 1.5)) * fade;
       envelopeGroup.visible = fade > 0.004;
 
@@ -1037,10 +1159,18 @@ export async function createScene(canvas, card) {
     );
 
     // Camera dollies between the closed and open framings, lifting slightly above the dock.
-    const zTarget = THREE.MathUtils.lerp(stage.closedZ, stage.openZ, layoutSpring.x);
+    // While the flap stands up the framing pulls back and lifts, so the whole
+    // open envelope plus the raised lid stay inside the frame.
+    const flapLift =
+      envelopeGroup && !wrapped
+        ? (flapT * flapT * (3 - 2 * flapT)) * (1 - (wrapT * wrapT * (3 - 2 * wrapT)))
+        : 0;
+    const zTarget =
+      THREE.MathUtils.lerp(stage.closedZ, stage.openZ, layoutSpring.x) + 1.30 * flapLift;
     camera.position.x = 0;
     camera.position.z += (zTarget - camera.position.z) * Math.min(1, dt * 8);
-    camera.position.y = stage.camYPerZ * camera.position.z;
+    camera.position.y =
+      stage.camYPerZ * camera.position.z + 1.16 * flapLift;
 
     // Living movers on the cover.
     if (liveRt && !reducedMotion && progress < 0.95) {
@@ -1127,7 +1257,7 @@ export async function createScene(canvas, card) {
   renderer.setRenderTarget(prevRT);
   await compiled;
 
-  camera.position.set(0, stage.camYPerZ * stage.closedZ, stage.closedZ);
+    camera.position.set(0, stage.camYPerZ * stage.closedZ, stage.closedZ);
   rafId = requestAnimationFrame((t) => {
     lastT = t;
     frame(t);
