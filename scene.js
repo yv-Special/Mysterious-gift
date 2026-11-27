@@ -394,7 +394,7 @@ export async function createScene(canvas, card) {
   /* The opened pocket: same body, lid standing up. Its body is punched out
    * where the paper sits, so the card behind shows through the slot. */
   const envOpenMat = new THREE.MeshStandardMaterial({
-    map: makeTexture(await loadImage("./env-open-body.webp"), maxAnisotropy),
+    map: makeTexture(await loadImage("./env-open-front.webp"), maxAnisotropy),
     normalMap: paperNormalTex,
     normalScale: new THREE.Vector2(0.3, 0.3),
     transparent: true,
@@ -410,6 +410,33 @@ export async function createScene(canvas, card) {
   envOpenMesh.renderOrder = 20.5;
   envOpenMesh.visible = false;
   envelopeGroup.add(envOpenMesh);
+
+  /* The strip above the slot is the envelope's own back wall: paper that sits
+   * *behind* the card. Drawn before the card so the sheet slides out over it
+   * instead of being cut in half by a cream band. */
+  const STRIP_PX = 128;
+  const STRIP_FRAC = STRIP_PX / 1342;
+  const STRIP_H = ENV_H * STRIP_FRAC;
+  const stripTex = makeTexture(await loadImage("./env-open-body.webp"), maxAnisotropy);
+  stripTex.repeat.set(1, STRIP_FRAC);
+  stripTex.offset.set(0, 1 - STRIP_FRAC);
+  const envOpenTopMat = new THREE.MeshStandardMaterial({
+    map: stripTex,
+    normalMap: paperNormalTex,
+    normalScale: new THREE.Vector2(0.3, 0.3),
+    transparent: true,
+    opacity: 0,
+    roughness: 0.88,
+    metalness: 0.02,
+    side: THREE.FrontSide,
+    depthTest: true,
+    depthWrite: false,
+  });
+  const envOpenTop = new THREE.Mesh(new THREE.PlaneGeometry(ENV_W, STRIP_H), envOpenTopMat);
+  envOpenTop.position.set(0, ENV_H / 2 - STRIP_H / 2, -0.60);
+  envOpenTop.renderOrder = -1;      // behind the card (0), in front of the lid (-2)
+  envOpenTop.visible = false;
+  envelopeGroup.add(envOpenTop);
 
   /* The lid stands up from the same hinge, but it lives *behind* the card:
    * the card slides out in front of it, exactly like paper does. */
@@ -1086,6 +1113,9 @@ export async function createScene(canvas, card) {
       envOpenMat.opacity = fade * openEase;
       envOpenMesh.visible = envOpenMat.opacity > 0.004;
       envOpenMesh.position.y = -0.16 * (1 - ft);
+      envOpenTopMat.opacity = fade * openEase;
+      envOpenTop.visible = envOpenTopMat.opacity > 0.004;
+      envOpenTop.position.y = ENV_H / 2 - STRIP_H / 2 - 0.16 * (1 - ft);
       const lidFall = THREE.MathUtils.smoothstep(k, 0.0, 0.34);   // 抽卡开始 → 立盖向后翻倒
       envLidPivot.rotation.x = -1.55 * lidFall;
       envLidMat.opacity = openEase * (1 - THREE.MathUtils.smoothstep(k, 0.30, 0.52));
