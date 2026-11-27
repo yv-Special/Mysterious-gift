@@ -1,5 +1,21 @@
 import { createMusic } from './music.js';
 
+/* 手机边缘"向右滑返回"是浏览器/系统级手势，脚本取消不掉；这里挂一道历史栅栏：
+ * 滑回去只会落回当前页（栅栏立刻补一格），贺卡不会被顶掉。 */
+function guardSwipeBack() {
+  try {
+    history.pushState({ paperLetter: 'guard' }, '', location.href);
+  } catch (error) {
+    return;
+  }
+  window.addEventListener('popstate', () => {
+    try {
+      history.pushState({ paperLetter: 'guard' }, '', location.href);
+    } catch (error) { /* ignore */ }
+  });
+}
+guardSwipeBack();
+
 const $ = (selector) => document.querySelector(selector);
 const main = $('main');
 const stage = $('#stage');
@@ -14,7 +30,7 @@ let zoomed = false;
 let lastTapAt = 0;
 let closeTimer = 0;
 
-const ORBIT_PER_PX = { yaw: 0.0065, pitch: 0.005 };
+const ORBIT_PER_PX = { yaw: 0.0085, pitch: 0.0065 };
 const TAP_MOVE_PX = 7;
 const TAP_MAX_MS = 600;
 

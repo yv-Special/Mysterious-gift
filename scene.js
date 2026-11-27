@@ -1045,7 +1045,6 @@ export async function createScene(canvas, card) {
     insideLeft.color.setRGB(1, 1, 1).multiplyScalar(shade);
     insideRightBase.color.setRGB(1, 1, 1).multiplyScalar(1 - 0.28 * (1 - shade));
 
-    center.position.x = (-CARD_W / 2) * (1 - layoutSpring.x);
 
     const footLeft = Math.min(0, CARD_W * Math.cos(angle));
     const footW = CARD_W - footLeft;
@@ -1100,6 +1099,11 @@ export async function createScene(canvas, card) {
       const envDrop = Math.pow(k, 1.5);
       center.position.y = CARD_STOW_Y * (1 - cardRise);
       center.scale.setScalar(CARD_STOW + (1 - CARD_STOW) * cardRise);
+      /* The sheet scales about this group's origin, which sits on the card's
+       * left edge, so the offset has to follow the *current* width — otherwise
+       * the stowed card sits left of centre inside the envelope. At spring = 1
+       * (opened spread) this collapses to 0 and the letter layout is untouched. */
+      center.position.x = (-CARD_W / 2) * center.scale.x * (1 - layoutSpring.x);
       envelopeGroup.position.y = -6.2 * envDrop;
       const fade = 1 - THREE.MathUtils.smoothstep(k, 0.60, 0.92);
       const backFade = 1 - THREE.MathUtils.smoothstep(k, 0.52, 0.84);
