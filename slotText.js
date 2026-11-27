@@ -281,6 +281,7 @@ export const PAGE_BOXES = {
 
 const BODY_FRACTION = 0.066;   // of page height, before fitting
 const PAGE_MIN_SCALE = 0.40;
+const PAGE_MAX_SCALE = 2.40;   // the letter may grow past 1.0 to fill the pages
 const PAGE_LINE_HEIGHT = 1.40;
 const PAGE_SCALE_STEP = 0.02;
 
@@ -372,17 +373,28 @@ export function drawTwoPageLetter(leftCanvas, rightCanvas, card) {
   const measure = (line) => ctxL.measureText(line).width / REF_PX;
   const aspect = leftCanvas.width / leftCanvas.height;
 
-  // One shared scale: the biggest body size that fits BOTH pages.
-  let scale = 1;
-  let L = null;
-  let R = null;
-  for (; scale >= PAGE_MIN_SCALE - 1e-9; scale -= PAGE_SCALE_STEP) {
-    const s = Math.round(scale * 100) / 100;
-    L = bodyMetrics(leftText, "left", s, measure, aspect);
-    R = bodyMetrics(rightText, "right", s, measure, aspect);
-    if (L.fits && R.fits) { scale = s; break; }
+  // One shared scale: the biggest body size that fits BOTH pages. Search
+  // upward too, so a short letter fills the page instead of using 1.0.
+  const probe = (s) => {
+    const l = bodyMetrics(leftText, "left", s, measure, aspect);
+    const r = bodyMetrics(rightText, "right", s, measure, aspect);
+    return l.fits && r.fits ? { l, r } : null;
+  };
+  let scale = PAGE_MAX_SCALE;
+  let found = probe(scale);
+  if (!found) {
+    let lo = PAGE_MIN_SCALE;
+    let hi = PAGE_MAX_SCALE;
+    for (let i = 0; i < 18; i += 1) {
+      const mid = Math.round(((lo + hi) / 2) / PAGE_SCALE_STEP) * PAGE_SCALE_STEP;
+      if (!(mid > lo && mid < hi)) break;
+      if (probe(mid)) lo = mid; else hi = mid;
+    }
+    scale = Math.max(PAGE_MIN_SCALE, Math.floor(lo / PAGE_SCALE_STEP) * PAGE_SCALE_STEP);
+    found = probe(scale);
   }
-  scale = Math.max(scale, PAGE_MIN_SCALE);
+  const L = found ? found.l : bodyMetrics(leftText, "left", scale, measure, aspect);
+  const R = found ? found.r : bodyMetrics(rightText, "right", scale, measure, aspect);
 
   const bodyPx = BODY_FRACTION * scale * leftCanvas.height;
   const bodyLH = bodyPx * PAGE_LINE_HEIGHT;
